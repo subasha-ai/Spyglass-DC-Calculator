@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spyglass Discharge Function Score Calculator</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,-apple-system,sans-serif;background:#080f17;color:#d4e6f5;min-height:100vh;font-size:14px;line-height:1.5;}
+:root{--bg:#080f17;--s2:#112030;--bdr:rgba(80,160,220,0.15);--bdr2:rgba(80,160,220,0.08);--acc:#3b9ede;--pos:#4ade80;--neg:#f87171;--warn:#fbbf24;--mut:#5a7a96;}
+
+.hdr{background:linear-gradient(135deg,#0d1e30,#080f17);border-bottom:1px solid var(--bdr);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;}
+.hdr-mark{width:34px;height:34px;background:#1e6fa8;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;margin-right:10px;flex-shrink:0;}
+.hdr-title{font-size:15px;font-weight:700;color:#fff;}
+.hdr-sub{font-size:10px;color:var(--mut);letter-spacing:2px;text-transform:uppercase;}
+
+.layout{display:flex;height:calc(100vh - 60px);overflow:hidden;}
+.sidebar{width:190px;background:#0a1520;border-right:1px solid var(--bdr2);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;padding:10px 0;}
+.nav-sec{padding:8px 14px 3px;font-size:9px;color:#2a4a60;letter-spacing:2.5px;text-transform:uppercase;}
+.nav-btn{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;border:none;background:transparent;color:var(--mut);font-size:12.5px;width:100%;text-align:left;border-left:3px solid transparent;transition:all .15s;font-family:inherit;}
+.nav-btn:hover{background:rgba(59,158,222,.05);color:#d4e6f5;}
+.nav-btn.active{background:rgba(59,158,222,.12);color:#90cbee;border-left-color:var(--acc);font-weight:600;}
+.main{flex:1;overflow-y:auto;padding:24px 28px;}
+.score-panel{width:270px;background:#0a1520;border-left:1px solid var(--bdr2);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;padding:18px 14px;}
+
+.sec{display:none;animation:fadeIn .18s ease;}
+.sec.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.sec-title{font-size:17px;font-weight:700;color:#fff;margin-bottom:5px;}
+.sec-desc{font-size:12.5px;color:var(--mut);margin-bottom:20px;line-height:1.6;}
+
+.field-grp{margin-bottom:22px;}
+.field-lbl{font-size:11.5px;font-weight:600;color:#8ab4cc;letter-spacing:.4px;margin-bottom:8px;}
+.sub-ttl{font-size:9.5px;letter-spacing:2.5px;text-transform:uppercase;color:#2a4060;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.04);}
+
+.chip-row{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{padding:6px 13px;border-radius:20px;border:1px solid transparent;cursor:pointer;font-size:12px;background:rgba(255,255,255,.04);color:var(--mut);transition:all .15s;user-select:none;font-family:inherit;}
+.chip:hover{background:rgba(59,158,222,.1);color:#d4e6f5;}
+.chip.sel{background:rgba(59,158,222,.18);color:#90cbee;border-color:rgba(59,158,222,.4);font-weight:600;}
+.coeff-tag{font-size:10px;margin-left:4px;opacity:.75;font-family:monospace;}
+
+.pmc-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.pmc-item{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:6px;cursor:pointer;border:1px solid rgba(255,255,255,.06);background:transparent;transition:all .15s;user-select:none;}
+.pmc-item:hover{background:rgba(59,158,222,.07);}
+.pmc-item.sel{background:rgba(59,158,222,.12);border-color:rgba(59,158,222,.35);}
+.pmc-item input{accent-color:var(--acc);cursor:pointer;flex-shrink:0;}
+.pmc-lbl{flex:1;font-size:12px;color:var(--mut);}
+.pmc-item.sel .pmc-lbl{color:#90cbee;}
+.pmc-coeff{font-family:monospace;font-size:11px;flex-shrink:0;}
+
+/* WALKING TOGGLE */
+.walk-toggle{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid rgba(59,158,222,.25);width:fit-content;margin-bottom:20px;}
+.walk-opt{padding:9px 20px;cursor:pointer;font-size:13px;font-weight:600;border:none;font-family:inherit;transition:all .15s;}
+.walk-opt.walk-active-w{background:rgba(74,222,128,.15);color:#4ade80;}
+.walk-opt.walk-active-nw{background:rgba(251,191,36,.15);color:#fbbf24;}
+.walk-opt:not(.walk-active-w):not(.walk-active-nw){background:rgba(255,255,255,.03);color:var(--mut);}
+.walk-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;font-weight:500;}
+.badge-w{background:rgba(74,222,128,.15);color:#4ade80;}
+.badge-nw{background:rgba(251,191,36,.15);color:#fbbf24;}
+
+/* GG TABLE */
+.gg-table{width:100%;border-collapse:collapse;}
+.gg-table th{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#2a4060;padding:6px 8px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);}
+.gg-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.03);}
+.gg-item-name{font-size:12.5px;color:#8ab4cc;}
+.gg-item-code{font-size:10px;color:#2a4060;font-family:monospace;margin-bottom:1px;}
+.gg-rating-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.gg-btn{width:34px;height:30px;border-radius:5px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:var(--mut);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:monospace;}
+.gg-btn:hover{background:rgba(59,158,222,.12);color:#90cbee;border-color:rgba(59,158,222,.3);}
+.gg-btn.sel-btn{background:rgba(59,158,222,.25);color:#90cbee;border-color:rgba(59,158,222,.5);font-weight:700;}
+.gg-btn.btn-88{background:rgba(251,191,36,.08);color:#f59e0b;border-color:rgba(251,191,36,.2);}
+.gg-btn.btn-88.sel-btn{background:rgba(251,191,36,.2);color:#fbbf24;border-color:rgba(251,191,36,.5);}
+.gg-btn.btn-na{background:rgba(255,255,255,.03);color:#2a4060;}
+.gg-btn.btn-na.sel-btn{background:rgba(255,255,255,.1);color:#718096;border-color:rgba(255,255,255,.2);}
+.gg-imputed{font-size:10px;color:#f59e0b;margin-left:4px;font-style:italic;}
+.gg-value-display{font-family:monospace;font-size:13px;font-weight:600;width:28px;text-align:center;color:#90cbee;}
+.gg-row-wheel td{background:rgba(251,191,36,.04);}
+.gg-double-note{font-size:10px;color:#f59e0b;margin-left:5px;}
+
+/* SCORE SUMMARY */
+.score-sum-box{background:rgba(59,158,222,.06);border:1px solid rgba(59,158,222,.15);border-radius:8px;padding:12px 14px;margin-top:14px;}
+.score-sum-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:12px;}
+.score-sum-row span:first-child{color:var(--mut);}
+.score-sum-row span:last-child{font-family:monospace;color:#d4e6f5;font-weight:600;}
+.score-sum-total{display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;margin-top:6px;border-top:1px solid rgba(59,158,222,.2);font-size:14px;font-weight:700;}
+.score-sum-total span:first-child{color:#90cbee;}
+.score-sum-total span:last-child{font-family:monospace;font-size:20px;color:#90cbee;}
+
+.info-box{background:rgba(59,158,222,.06);border:1px solid rgba(59,158,222,.15);border-radius:7px;padding:12px 14px;margin-top:12px;font-size:12px;color:#8ab4cc;}
+.info-row{display:flex;justify-content:space-between;margin-bottom:3px;}
+.info-row:last-child{margin-bottom:0;}
+
+.cov{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:5px;cursor:pointer;border:1px solid rgba(255,255,255,.04);margin-bottom:4px;transition:all .15s;user-select:none;}
+.cov:hover{background:rgba(59,158,222,.05);}
+.cov.chk{background:rgba(59,158,222,.1);border-color:rgba(59,158,222,.25);}
+.cov input{accent-color:var(--acc);width:14px;height:14px;cursor:pointer;flex-shrink:0;}
+.cov-lbl{flex:1;font-size:12px;color:#7090a0;}
+.cov.chk .cov-lbl{color:#d4e6f5;}
+.cov-val{font-family:monospace;font-size:11px;font-weight:500;flex-shrink:0;}
+
+.score-hero{background:linear-gradient(135deg,#0d2035,#0a1520);border:1px solid var(--bdr);border-radius:10px;padding:16px;margin-bottom:14px;text-align:center;}
+.sh-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:3px;}
+.sh-model{font-size:10px;margin-bottom:4px;}
+.sh-value{font-family:monospace;font-size:40px;font-weight:500;line-height:1;transition:color .3s;}
+.sh-cap{font-size:9.5px;color:var(--mut);margin-top:3px;}
+.sh-bar-wrap{height:5px;background:#1a3050;border-radius:3px;overflow:hidden;margin:8px 0 3px;}
+.sh-bar{height:100%;border-radius:3px;transition:width .4s ease,background .4s;}
+.sh-range{display:flex;justify-content:space-between;font-size:9.5px;color:#2a4060;}
+
+.bkd-title{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--mut);margin-bottom:9px;}
+.bkd-item{display:flex;justify-content:space-between;align-items:flex-start;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);gap:6px;}
+.bkd-lbl{font-size:10.5px;color:#4a6a80;line-height:1.3;flex:1;}
+.bkd-val{font-family:monospace;font-size:11.5px;font-weight:500;flex-shrink:0;}
+.bkd-total{display:flex;justify-content:space-between;align-items:center;padding-top:9px;margin-top:6px;border-top:2px solid rgba(59,158,222,.3);}
+.bkd-total-lbl{font-size:11.5px;color:#90cbee;font-weight:600;}
+.bkd-total-val{font-family:monospace;font-size:15px;color:#90cbee;font-weight:500;}
+
+.reset-btn{display:block;width:100%;padding:7px;margin-top:14px;border:1px solid rgba(255,255,255,.07);border-radius:5px;background:transparent;color:var(--mut);font-family:inherit;font-size:11.5px;cursor:pointer;transition:all .15s;}
+.reset-btn:hover{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3);color:var(--neg);}
+.green{color:var(--pos);} .red{color:var(--neg);} .blue{color:#90cbee;} .amber{color:var(--warn);}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div style="display:flex;align-items:center;">
+    <div class="hdr-mark">QRP</div>
+    <div>
+      <div class="hdr-title">Spyglass Discharge Function Score Calculator</div>
+      <div class="hdr-sub">CMS · Skilled Nursing Facility · Section GG</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span id="hdr-model-badge" class="walk-badge badge-w">With Walking</span>
+    <span id="hdr-score" style="font-family:monospace;font-size:22px;font-weight:700;color:#3b6a8e;">—</span>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="nav-sec">Patient</div>
+    <button class="nav-btn active" onclick="nav('demographics',this)">👤 Demographics</button>
+    <button class="nav-btn" onclick="nav('gg',this)">📝 GG Item Entry</button>
+    <div class="nav-sec">Factors</div>
+    <button class="nav-btn" onclick="nav('prior',this)">🦽 Prior Function</button>
+    <button class="nav-btn" onclick="nav('clinical',this)">🩺 Clinical</button>
+    <button class="nav-btn" onclick="nav('comorbidities',this)">📋 Comorbidities</button>
+    <div class="nav-sec">Outcome</div>
+    <button class="nav-btn" onclick="nav('discharge',this)">✅ Discharge Comparison</button>
+    <div class="nav-sec">Reference</div>
+    <button class="nav-btn" onclick="nav('formula',this)">🔢 Formula Ref</button>
+  </nav>
+
+  <main class="main">
+
+    <!-- DEMOGRAPHICS -->
+    <section id="sec-demographics" class="sec active">
+      <div class="sec-title">Patient Demographics</div>
+      <div class="sec-desc">Select the patient's age band and primary medical condition category from their MDS assessment.</div>
+      <div class="field-grp">
+        <div class="field-lbl">Age Band at Admission</div>
+        <div class="chip-row">
+          <div class="chip" data-age="lte54" onclick="setAge('lte54',this)">≤54 yrs <span class="coeff-tag red">−0.021</span></div>
+          <div class="chip" data-age="55-64" onclick="setAge('55-64',this)">55–64 <span class="coeff-tag green">+0.074</span></div>
+          <div class="chip sel" data-age="65-74" onclick="setAge('65-74',this)">65–74 <span class="coeff-tag">(ref)</span></div>
+          <div class="chip" data-age="75-84" onclick="setAge('75-84',this)">75–84 <span class="coeff-tag red">−0.345</span></div>
+          <div class="chip" data-age="85-90" onclick="setAge('85-90',this)">85–90 <span class="coeff-tag red">−0.856</span></div>
+          <div class="chip" data-age="gt90" onclick="setAge('gt90',this)">&gt;90 <span class="coeff-tag red">−1.638</span></div>
+        </div>
+      </div>
+      <div class="field-grp">
+        <div class="field-lbl">Primary Medical Condition Category</div>
+        <div class="pmc-grid" id="pmc-grid"></div>
+      </div>
+    </section>
+
+    <!-- GG ITEM ENTRY -->
+    <section id="sec-gg" class="sec">
+      <div class="sec-title">GG Item Entry</div>
+      <div class="sec-desc">First select the mobility model, then enter each item's rating from the <strong>admission MDS</strong>. Items coded <strong>88</strong> will be imputed using the average of scored items. Items coded <strong>N/A</strong> or environment are excluded.</div>
+
+      <!-- WALKING TOGGLE -->
+      <div class="field-lbl">Mobility Model</div>
+      <div class="walk-toggle">
+        <button class="walk-opt walk-active-w" id="btn-walking" onclick="setWalkMode('walking')">🚶 With Walking</button>
+        <button class="walk-opt" id="btn-nowalking" onclick="setWalkMode('nowalking')">♿ Non-Ambulatory (Wheelchair)</button>
+      </div>
+
+      <!-- Context note -->
+      <div id="walk-context" style="font-size:12px;color:var(--mut);margin-bottom:16px;padding:9px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02);">
+        <strong style="color:#4ade80;">With Walking:</strong> Patient is expected to walk. Uses GG0170I (Walk 10 ft) and GG0170J (Walk 50 ft with 2 turns).
+      </div>
+
+      <!-- RATING SCALE LEGEND -->
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:18px;">
+        <div style="font-size:9.5px;letter-spacing:2px;text-transform:uppercase;color:#2a4060;width:100%;margin-bottom:3px;">Rating Scale</div>
+        <span style="display:flex;align-items:center;gap:5px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:5px;padding:4px 8px;font-size:11.5px;"><span style="font-family:monospace;font-weight:700;color:#4ade80;">6</span><span style="color:#8ab4cc;">Independent</span></span>
+        <span style="display:flex;align-items:center;gap:5px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:5px;padding:4px 8px;font-size:11.5px;"><span style="font-family:monospace;font-weight:700;color:#68d391;">5</span><span style="color:#8ab4cc;">Setup / Clean-Up</span></span>
+        <span style="display:flex;align-items:center;gap:5px;background:rgba(74,222,128,.04);border:1px solid rgba(74,222,128,.1);border-radius:5px;padding:4px 8px;font-size:11.5px;"><span style="font-family:monospace;font-weight:700;color:#68d391;">4</span><span style="color:#8ab4cc;">Supervision / Touching</span></span>
+        <span style="display:flex;align-items:center;gap:5px;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.15);border-radius:5px;padding:4px 8px;font-size:11.5px;"><span style="font-family:monospace;font-weight:700;color:#fbbf24;">3</span><span style="color:#8ab4cc;">Partial / Moderate Assist</span></span>
+        <span style="display:flex;align-items:center;gap:5px;background:rgba(248,113,113,.05);border:1px solid rgba(248,113,113,.15);border-radius:5px;padding:4px 8px;font-size:11.5px;"><span style="font-family:monospace;font-weight:700;color:#f87171;">2</span><span style="color:#8ab4cc;">Substantial / Max Assist</span></span>
+        <span style="display:flex;align-items:center;gap:5px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:5px;padding:4px 8px;font-size:11.5px;"><span style="font-family:monospace;font-weight:700;color:#f87171;">1</span><span style="color:#8ab4cc;">Dependent</span></span>
+        <span style="display:flex;align-items:center;gap:5px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:5px;padding:4px 8px;font-size:11.5px;"><span style="font-family:monospace;font-weight:700;color:#fbbf24;">88</span><span style="color:#8ab4cc;">Not Attempted – Medical (imputed)</span></span>
+        <span style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:5px;padding:4px 8px;font-size:11.5px;"><span style="font-family:monospace;font-weight:700;color:#4a6a80;">N/A</span><span style="color:#4a6a80;">Not Applicable / Env (excluded)</span></span>
+      </div>
+
+      <div class="sub-ttl">Self-Care Items (GG0130)</div>
+      <table class="gg-table"><thead><tr><th style="width:230px">Item</th><th>Rating</th></tr></thead>
+        <tbody id="gg-selfcare-body"></tbody></table>
+
+      <div class="sub-ttl" style="margin-top:18px;">Mobility Items (GG0170)</div>
+      <table class="gg-table"><thead><tr><th style="width:230px">Item</th><th>Rating</th></tr></thead>
+        <tbody id="gg-mobility-body"></tbody></table>
+
+      <div class="score-sum-box">
+        <div class="score-sum-row"><span>Scored items</span><span id="sum-scored-count">0</span></div>
+        <div class="score-sum-row"><span>Average of scored items</span><span id="sum-avg">—</span></div>
+        <div class="score-sum-row"><span>Imputed items</span><span id="sum-imputed">—</span></div>
+        <div class="score-sum-row" id="wheel-row" style="display:none;"><span>GG0170R Wheel 50ft (×2)</span><span id="sum-wheel">—</span></div>
+        <div class="score-sum-row"><span>BMI</span>
+          <span><input type="number" id="bmi-val" min="10" max="80" placeholder="e.g. 24" oninput="recalc()" style="width:70px;padding:3px 6px;background:var(--s2);border:1px solid rgba(59,158,222,.3);border-radius:4px;color:#90cbee;font-family:monospace;font-size:12px;outline:none;"/></span>
+        </div>
+        <div class="score-sum-total">
+          <span>Admission Function Score</span>
+          <span id="sum-total">—</span>
+        </div>
+      </div>
+      <div id="adm-breakdown" class="info-box" style="display:none;"></div>
+    </section>
+
+    <!-- PRIOR -->
+    <section id="sec-prior" class="sec">
+      <div class="sec-title">Prior Functioning &amp; Device Use</div>
+      <div class="sec-desc">Based on MDS Section GG prior functioning items before this illness/injury.</div>
+      <div class="sub-ttl">Prior Self-Care &amp; Mobility</div><div id="covs-prior-func"></div>
+      <div class="sub-ttl">Prior Device Use</div><div id="covs-prior-device"></div>
+      <div class="sub-ttl">Surgery</div><div id="covs-surgery"></div>
+    </section>
+
+    <!-- CLINICAL -->
+    <section id="sec-clinical" class="sec">
+      <div class="sec-title">Clinical Factors at Admission</div>
+      <div class="sec-desc">Select all conditions present at the time of the admission MDS assessment.</div>
+      <div class="sub-ttl">Therapy</div><div id="covs-therapy"></div>
+      <div class="sub-ttl">Pressure Ulcers / Injuries</div><div id="covs-pu"></div>
+      <div class="sub-ttl">Cognition (BIMS)</div><div id="covs-bims"></div>
+      <div class="sub-ttl">Communication</div><div id="covs-comm"></div>
+      <div class="sub-ttl">Continence</div><div id="covs-continence"></div>
+      <div class="sub-ttl">Nutrition &amp; Other</div><div id="covs-nutrition"></div>
+    </section>
+
+    <!-- COMORBIDITIES -->
+    <section id="sec-comorbidities" class="sec">
+      <div class="sec-title">Comorbidities (HCC Mapped)</div>
+      <div class="sec-desc">Select all applicable comorbidities from the patient's MDS diagnosis section. HCC70/71 suppressed for spinal cord; HCC77/78 for progressive neurological.</div>
+      <div id="covs-hcc"></div>
+    </section>
+
+    <!-- FORMULA REF -->
+    <section id="sec-formula" class="sec">
+      <div class="sec-title">Formula Reference</div>
+      <div class="sec-desc">FY2025 regression model. Same coefficients apply to both With Walking and Non-Ambulatory — only the admission score items differ.</div>
+
+      <div class="sub-ttl">GG Items by Model</div>
+      <table class="gg-table" style="margin-bottom:16px;">
+        <thead><tr><th>Code</th><th>Item</th><th>With Walking</th><th>Non-Ambulatory</th></tr></thead>
+        <tbody>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0130A</td><td class="gg-item-name">Eating</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--pos);font-size:11px;">✓</td></tr>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0130B</td><td class="gg-item-name">Oral Hygiene</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--pos);font-size:11px;">✓</td></tr>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0130C</td><td class="gg-item-name">Toileting Hygiene</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--pos);font-size:11px;">✓</td></tr>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0170A</td><td class="gg-item-name">Roll Left and Right</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--pos);font-size:11px;">✓</td></tr>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0170C</td><td class="gg-item-name">Lying to Sitting on Side of Bed</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--pos);font-size:11px;">✓</td></tr>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0170D</td><td class="gg-item-name">Sit to Stand</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--pos);font-size:11px;">✓</td></tr>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0170E</td><td class="gg-item-name">Chair / Bed-to-Chair Transfer</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--pos);font-size:11px;">✓</td></tr>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0170F</td><td class="gg-item-name">Toilet Transfer</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--pos);font-size:11px;">✓</td></tr>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0170I</td><td class="gg-item-name">Walk 10 Feet</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--mut);font-size:11px;">—</td></tr>
+          <tr><td style="font-family:monospace;font-size:11px;color:var(--acc)">GG0170J</td><td class="gg-item-name">Walk 50 Feet with 2 Turns</td><td style="color:var(--pos);font-size:11px;">✓</td><td style="color:var(--mut);font-size:11px;">—</td></tr>
+          <tr style="background:rgba(251,191,36,.04)"><td style="font-family:monospace;font-size:11px;color:var(--warn)">GG0170R</td><td class="gg-item-name" style="color:var(--warn)">Wheel 50 Feet with 2 Turns <strong>(×2)</strong></td><td style="color:var(--mut);font-size:11px;">—</td><td style="color:var(--warn);font-size:11px;">✓ ×2</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:11px;color:var(--mut);margin-bottom:16px;">GG0170R is counted twice in the Non-Ambulatory model to substitute for the two walking items.</div>
+
+      <div class="sub-ttl">All Covariate Coefficients</div>
+      <div id="formula-cov-list" style="font-family:monospace;font-size:11px;color:#3a5a70;line-height:2.2;"></div>
+    </section>
+
+    <!-- DISCHARGE COMPARISON -->
+    <section id="sec-discharge" class="sec">
+      <div class="sec-title">Discharge Comparison</div>
+      <div class="sec-desc">Enter the actual GG scores from the <strong>discharge MDS</strong> to see if the patient met their expected score. You can use scores calculated from the other tabs, or enter them manually below.</div>
+
+      <!-- STANDALONE MANUAL INPUTS -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+        <div style="background:rgba(59,158,222,.06);border:1px solid rgba(59,158,222,.2);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:6px;">Admission Function Score</div>
+          <div style="font-size:10.5px;color:#4a7090;margin-bottom:8px;">Auto-filled from GG Entry tab, or enter manually</div>
+          <input type="number" id="dc-adm-manual" min="0" max="60" placeholder="e.g. 34" oninput="computeDischarge()"
+            style="width:100%;padding:7px 10px;font-size:20px;font-weight:700;font-family:monospace;background:#0a1520;border:1px solid rgba(59,158,222,.35);border-radius:6px;color:#90cbee;outline:none;"/>
+          <div id="dc-adm-source" style="font-size:10px;color:#2a4a60;margin-top:5px;"></div>
+        </div>
+        <div style="background:rgba(59,158,222,.06);border:1px solid rgba(59,158,222,.2);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:6px;">Expected Discharge Score</div>
+          <div style="font-size:10.5px;color:#4a7090;margin-bottom:8px;">Auto-filled from regression model, or enter manually</div>
+          <input type="number" id="dc-exp-manual" min="0" max="60" placeholder="e.g. 42" oninput="computeDischarge()"
+            style="width:100%;padding:7px 10px;font-size:20px;font-weight:700;font-family:monospace;background:#0a1520;border:1px solid rgba(59,158,222,.35);border-radius:6px;color:#90cbee;outline:none;"/>
+          <div id="dc-exp-source" style="font-size:10px;color:#2a4a60;margin-top:5px;"></div>
+        </div>
+      </div>
+
+      <!-- RESULT BANNER -->
+      <div id="dc-banner" style="display:none;border-radius:10px;padding:18px 20px;margin-bottom:22px;text-align:center;">
+        <div id="dc-verdict" style="font-size:22px;font-weight:800;margin-bottom:4px;"></div>
+        <div id="dc-verdict-sub" style="font-size:12px;opacity:.8;"></div>
+      </div>
+
+      <!-- SCORE COMPARISON GRID -->
+      <div id="dc-compare-grid" style="display:none;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px;">
+        <div style="background:rgba(59,158,222,.06);border:1px solid rgba(59,158,222,.15);border-radius:8px;padding:14px;text-align:center;">
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:6px;">Expected</div>
+          <div id="dc-expected" style="font-family:monospace;font-size:28px;font-weight:600;color:#90cbee;">—</div>
+          <div style="font-size:10px;color:var(--mut);margin-top:2px;">from regression model</div>
+        </div>
+        <div id="dc-actual-box" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:14px;text-align:center;">
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:6px;">Actual</div>
+          <div id="dc-actual-val" style="font-family:monospace;font-size:28px;font-weight:600;color:#5a7a96;">—</div>
+          <div style="font-size:10px;color:var(--mut);margin-top:2px;">sum of discharge GG</div>
+        </div>
+        <div id="dc-diff-box" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:14px;text-align:center;">
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:6px;">Difference</div>
+          <div id="dc-diff-val" style="font-family:monospace;font-size:28px;font-weight:600;color:#5a7a96;">—</div>
+          <div style="font-size:10px;color:var(--mut);margin-top:2px;">actual − expected</div>
+        </div>
+      </div>
+
+      <!-- ITEM-BY-ITEM TABLE -->
+      <div class="sub-ttl">Self-Care Items (GG0130) — Discharge Scores</div>
+      <table class="gg-table"><thead><tr><th style="width:230px">Item</th><th>Discharge Rating</th><th style="width:90px;text-align:right;">Adm → Dis</th></tr></thead>
+        <tbody id="dc-selfcare-body"></tbody></table>
+
+      <div class="sub-ttl" style="margin-top:18px;">Mobility Items (GG0170) — Discharge Scores</div>
+      <table class="gg-table"><thead><tr><th style="width:230px">Item</th><th>Discharge Rating</th><th style="width:90px;text-align:right;">Adm → Dis</th></tr></thead>
+        <tbody id="dc-mobility-body"></tbody></table>
+
+      <div style="margin-top:14px;padding:10px 14px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:6px;font-size:11.5px;color:var(--mut);">
+        ⓘ The <strong style="color:#d4e6f5;">expected score</strong> is calculated from the admission data you entered in the other tabs. Make sure Demographics, GG Item Entry, and all applicable clinical factors are filled in before entering discharge scores.
+      </div>
+    </section>
+
+  </main>
+
+  <!-- SCORE PANEL -->
+  <aside class="score-panel">
+    <div class="score-hero">
+      <div class="sh-label">Expected Discharge Score</div>
+      <div class="sh-model" id="sh-model-label"><span class="walk-badge badge-w">With Walking</span></div>
+      <div class="sh-value" id="score-display" style="color:#3b6a8e;">—</div>
+      <div class="sh-bar-wrap"><div class="sh-bar" id="score-bar" style="width:0%;background:#3b6a8e;"></div></div>
+      <div class="sh-range"><span>0</span><span>60 max</span></div>
+      <div class="sh-cap">Cap: 60 pts</div>
+    </div>
+    <div class="bkd-title">Score Breakdown</div>
+    <div id="breakdown-list"><div style="font-size:11px;color:#2a4060;padding:6px 0;">Enter GG items to calculate</div></div>
+    <div class="bkd-total" id="bkd-total" style="display:none;">
+      <span class="bkd-total-lbl">Raw Total</span>
+      <span class="bkd-total-val" id="raw-total">—</span>
+    </div>
+    <div id="cap-warn" style="display:none;font-size:10px;color:var(--warn);margin-top:4px;">⚠ Capped at 60</div>
+    <button class="reset-btn" onclick="resetAll()">↺ Reset All Fields</button>
+  </aside>
+</div>
+
+<script>
+const INTERCEPT = 30.0118;
+const AGE_C = {'lte54':-0.021,'55-64':0.0743,'65-74':0,'75-84':-0.3451,'85-90':-0.8555,'gt90':-1.6377};
+const PMC = {
+  '09':{label:'09 – Hip & Knee Replacements',base:0,int:0},
+  '01':{label:'01 – Stroke',base:-9.403,int:0.215},
+  '02':{label:'02 – Non-Traumatic Brain Dysfunction',base:-7.6338,int:0.1644},
+  '03':{label:'03 – Traumatic Brain Dysfunction',base:-7.6338,int:0.1644},
+  '04':{label:'04 – Non-Traumatic Spinal Cord',base:-7.5056,int:0.1627},
+  '05':{label:'05 – Traumatic Spinal Cord',base:-14.2713,int:0.3309},
+  '06':{label:'06 – Progressive Neurological',base:-8.5182,int:0.1631},
+  '07':{label:'07 – Other Neurological',base:-6.8022,int:0.1485},
+  '08':{label:'08 – Amputation',base:-8.3109,int:0.1654},
+  '10':{label:'10 – Fractures & Multiple Trauma',base:-2.9722,int:0.0476},
+  '11':{label:'11 – Other Orthopedic',base:-5.1916,int:0.1077},
+  '12':{label:'12 – Debility / Cardiorespiratory',base:-8.0956,int:0.1772},
+  '13':{label:'13 – Medically Complex',base:-8.0534,int:0.1793},
+};
+
+// With Walking: 10 items (8 shared + 2 walking)
+const GG_WALKING = [
+  ['gg_A','GG0130A','Eating','sc'],
+  ['gg_B','GG0130B','Oral Hygiene','sc'],
+  ['gg_C','GG0130C','Toileting Hygiene','sc'],
+  ['gg_0170A','GG0170A','Roll Left and Right','mob'],
+  ['gg_0170C','GG0170C','Lying to Sitting on Side of Bed','mob'],
+  ['gg_0170D','GG0170D','Sit to Stand','mob'],
+  ['gg_0170E','GG0170E','Chair / Bed-to-Chair Transfer','mob'],
+  ['gg_0170F','GG0170F','Toilet Transfer','mob'],
+  ['gg_0170I','GG0170I','Walk 10 Feet ⭐','mob'],
+  ['gg_0170J','GG0170J','Walk 50 Feet with 2 Turns ⭐','mob'],
+];
+
+// Non-Ambulatory: 8 shared + GG0170R (×2)
+const GG_NOWALKING = [
+  ['gg_A','GG0130A','Eating','sc'],
+  ['gg_B','GG0130B','Oral Hygiene','sc'],
+  ['gg_C','GG0130C','Toileting Hygiene','sc'],
+  ['gg_0170A','GG0170A','Roll Left and Right','mob'],
+  ['gg_0170C','GG0170C','Lying to Sitting on Side of Bed','mob'],
+  ['gg_0170D','GG0170D','Sit to Stand','mob'],
+  ['gg_0170E','GG0170E','Chair / Bed-to-Chair Transfer','mob'],
+  ['gg_0170F','GG0170F','Toilet Transfer','mob'],
+  ['gg_0170R','GG0170R','Wheel 50 Feet with 2 Turns  (counts ×2)','mob-wheel'],
+];
+
+const COVARIATES = [
+  ['priorSCDep',  'Prior Self-Care: Dependent',                              -3.8267,'prior-func'],
+  ['priorSCSome', 'Prior Self-Care: Some Help',                              -2.2614,'prior-func'],
+  ['priorMobDep', 'Prior Indoor Mobility: Dependent',                        -1.6296,'prior-func'],
+  ['priorMobSome','Prior Indoor Mobility: Some Help',                        -1.0775,'prior-func'],
+  ['priorStDep',  'Prior Stairs: Dependent',                                  0.3419,'prior-func'],
+  ['priorStSome', 'Prior Stairs: Some Help',                                  0.3431,'prior-func'],
+  ['priorCogDep', 'Prior Functional Cognition: Dependent',                   -0.6703,'prior-func'],
+  ['devWalker',   'Prior Device: Walker',                                     0.0425,'prior-device'],
+  ['devWC',       'Prior Device: Wheelchair / Scooter',                      -2.3343,'prior-device'],
+  ['devLift',     'Prior Device: Mechanical Lift',                           -3.5764,'prior-device'],
+  ['devOrtho',    'Prior Device: Orthotics / Prosthetics',                    0.104, 'prior-device'],
+  ['priorSurg',   'Prior Surgery',                                            0.6576,'surgery'],
+  ['noTherapy',   'No PT or OT at Admission',                               -4.0674,'therapy'],
+  ['pu2',         'Stage 2 Pressure Ulcer – Admission',                      -0.9505,'pu'],
+  ['pu34',        'Stage 3/4/Unstageable Pressure Ulcer – Admission',        -1.9886,'pu'],
+  ['bimsM',       'BIMS Score 8–12 (Moderately Impaired)',                   -1.2709,'bims'],
+  ['bimsS',       'BIMS Score ≤7 (Severely Impaired)',                       -2.5276,'bims'],
+  ['commMS',      'Communication: Moderate–Severe Impairment',               -1.294, 'comm'],
+  ['commMd',      'Communication: Mild Impairment',                          -0.5816,'comm'],
+  ['urInc',       'Urinary: Occasionally / Frequently / Always Incontinent', -1.0514,'continence'],
+  ['urCath',      'Urinary: Not Rated (Indwelling Catheter)',                -2.1629,'continence'],
+  ['bwOF',        'Bowel: Occasionally or Frequently Incontinent',           -1.1636,'continence'],
+  ['bwAlw',       'Bowel: Always Incontinent',                               -4.3787,'continence'],
+  ['mechDiet',    'Mechanically Altered Diet – Admission',                   -0.7066,'nutrition'],
+  ['ivFeed',      'Total Parenteral / IV / Tube Feeding',                    -1.1014,'nutrition'],
+  ['falls',       'History of Falls – Admission',                             0.4549,'nutrition'],
+  ['hcc2',        'Septicemia / Sepsis / SIRS (HCC2)',                        0.3191,'hcc'],
+  ['hcc8',        'Metastatic Cancer / Acute Leukemia (HCC8)',               -0.7201,'hcc'],
+  ['hcc10',       'Lymphoma and Other Cancers (HCC10)',                      -0.7845,'hcc'],
+  ['hcc11',       'Colorectal / Bladder / Other Cancers (HCC11)',             0.1316,'hcc'],
+  ['hcc18',       'Diabetes with/without Complications (HCC18/19)',          -0.1949,'hcc'],
+  ['hcc23',       'Other Endocrine / Metabolic Disorders (HCC23)',            0.1824,'hcc'],
+  ['hcc33',       'Intestinal Obstruction / Perforation (HCC33)',             0.3063,'hcc'],
+  ['hcc51',       'Dementia with/without Complications (HCC51/52)',          -0.7607,'hcc'],
+  ['hcc57',       'Mental Health: Schizophrenia/MDD/Bipolar/Psychosis (HCC57–60)',-0.3707,'hcc'],
+  ['hcc70',       'Tetraplegia / Paraplegia (HCC70/71)',                     -2.8928,'hcc',['04','05']],
+  ['hcc77',       'Multiple Sclerosis (HCC77)',                              -1.5428,'hcc',['06']],
+  ['hcc78',       "Parkinson's / Huntington's (HCC78)",                      -0.7805,'hcc',['06']],
+  ['hcc88',       'Angina Pectoris (HCC88)',                                  0.1939,'hcc',['12']],
+  ['hcc103',      'Hemiplegia / Hemiparesis (HCC103)',                       -1.735, 'hcc'],
+  ['hcc114',      'Aspiration / Bacterial Pneumonias (HCC114/115)',          -0.0267,'hcc',['12']],
+  ['hcc134',      'Dialysis / CKD Stage 5 (HCC134/136)',                    -1.2601,'hcc'],
+  ['hcc137',      'CKD Stages 1–4 Unspecified (HCC137–139)',                -0.1089,'hcc'],
+  ['hcc167',      'Major Head Injury (HCC167)',                               0.2196,'hcc',['03']],
+  ['hcc173',      'Amputations: Traumatic / Lower Limb (HCC173/189)',        -0.718, 'hcc',['08']],
+];
+
+let state = {age:'65-74', pmc:'09', walkMode:'walking', gg:{}, checks:{}, dcGg:{}};
+
+function init() {
+  buildPMC(); buildGGItems(); buildCovariates(); buildFormulaRef(); recalc();
+}
+
+function buildPMC() {
+  document.getElementById('pmc-grid').innerHTML = Object.entries(PMC).map(([code,d])=>`
+    <label class="pmc-item ${code===state.pmc?'sel':''}" onclick="setPmc('${code}')">
+      <input type="radio" name="pmc" value="${code}" ${code===state.pmc?'checked':''}>
+      <span class="pmc-lbl">${d.label}</span>
+      <span class="pmc-coeff ${d.base>=0?'green':'red'}">${d.base>=0?'+':''}${d.base}</span>
+    </label>`).join('');
+}
+
+function buildGGItems() {
+  const items = state.walkMode==='walking' ? GG_WALKING : GG_NOWALKING;
+  const sc = document.getElementById('gg-selfcare-body');
+  const mob = document.getElementById('gg-mobility-body');
+  sc.innerHTML=''; mob.innerHTML='';
+  items.forEach(([key,code,desc,grp])=>{
+    const isWheel = grp==='mob-wheel';
+    const tbody = grp==='sc' ? sc : mob;
+    const rowClass = isWheel ? 'gg-row-wheel' : '';
+    tbody.innerHTML += `
+      <tr id="gg-row-${key}" class="${rowClass}">
+        <td>
+          <div class="gg-item-code">${code}${isWheel?' <span style="color:#f59e0b;font-size:9px;">COUNTS ×2</span>':''}</div>
+          <div class="gg-item-name" style="${isWheel?'color:#fbbf24;':''}">${desc}</div>
+        </td>
+        <td>
+          <div class="gg-rating-row">
+            ${[1,2,3,4,5,6].map(v=>`<button class="gg-btn ${state.gg[key]===v?'sel-btn':''}" onclick="setGG('${key}',${v})" id="gg-${key}-${v}">${v}</button>`).join('')}
+            <button class="gg-btn btn-88 ${state.gg[key]===88?'sel-btn':''}" onclick="setGG('${key}',88)" id="gg-${key}-88">88</button>
+            <button class="gg-btn btn-na ${state.gg[key]===9?'sel-btn':''}" onclick="setGG('${key}',9)" id="gg-${key}-9">N/A</button>
+            <span class="gg-value-display" id="gg-disp-${key}">${state.gg[key]!==undefined&&state.gg[key]!==null?state.gg[key]:'—'}</span>
+            <span class="gg-imputed" id="gg-imp-${key}" style="display:none;"></span>
+          </div>
+        </td>
+      </tr>`;
+  });
+  // Show/hide wheel row in summary
+  document.getElementById('wheel-row').style.display = state.walkMode==='nowalking' ? 'flex' : 'none';
+}
+
+function buildCovariates() {
+  const groupMap = {'prior-func':'covs-prior-func','prior-device':'covs-prior-device','surgery':'covs-surgery','therapy':'covs-therapy','pu':'covs-pu','bims':'covs-bims','comm':'covs-comm','continence':'covs-continence','nutrition':'covs-nutrition','hcc':'covs-hcc'};
+  COVARIATES.forEach(([key,label,coeff,grp])=>{
+    const el = document.getElementById(groupMap[grp]);
+    if(!el) return;
+    el.innerHTML+=`<label class="cov" id="cov-wrap-${key}"><input type="checkbox" onchange="toggleCov('${key}')"><span class="cov-lbl">${label}</span><span class="cov-val ${coeff>=0?'green':'red'}">${coeff>=0?'+':''}${coeff}</span></label>`;
+  });
+}
+
+function buildFormulaRef() {
+  document.getElementById('formula-cov-list').innerHTML = COVARIATES.map(([,label,coeff])=>{
+    const c=coeff>=0?`<span style="color:var(--pos)">+${coeff}</span>`:`<span style="color:var(--neg)">${coeff}</span>`;
+    return `<div style="display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid rgba(255,255,255,.03);padding:1px 0;"><span style="color:#3a5a70">${label}</span>${c}</div>`;
+  }).join('');
+}
+
+function nav(id,btn) {
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='discharge') buildDCItems();
+}
+
+function setAge(val) {
+  state.age=val;
+  document.querySelectorAll('.chip[data-age]').forEach(c=>c.classList.toggle('sel',c.dataset.age===val));
+  recalc();
+}
+
+function setPmc(code) {
+  state.pmc=code;
+  document.querySelectorAll('.pmc-item').forEach(el=>{const inp=el.querySelector('input');const s=inp&&inp.value===code;el.classList.toggle('sel',s);if(inp)inp.checked=s;});
+  recalc();
+}
+
+function setWalkMode(mode) {
+  state.walkMode=mode;
+  // Clear walking-specific GG values when switching
+  if(mode==='walking'){['gg_0170R'].forEach(k=>delete state.gg[k]);}
+  else{['gg_0170I','gg_0170J'].forEach(k=>delete state.gg[k]);}
+  // Update toggle buttons
+  document.getElementById('btn-walking').className='walk-opt'+(mode==='walking'?' walk-active-w':'');
+  document.getElementById('btn-nowalking').className='walk-opt'+(mode==='nowalking'?' walk-active-nw':'');
+  // Update context note
+  const ctx=document.getElementById('walk-context');
+  if(mode==='walking'){
+    ctx.innerHTML='<strong style="color:#4ade80;">With Walking:</strong> Patient is expected to walk. Uses GG0170I (Walk 10 ft) and GG0170J (Walk 50 ft with 2 turns).';
+  } else {
+    ctx.innerHTML='<strong style="color:#fbbf24;">Non-Ambulatory:</strong> Both walking items coded 88. Uses GG0170R (Wheel 50 ft with 2 turns), which counts <strong>twice</strong> to substitute for the two walking items.';
+  }
+  // Update header badge and score panel badge
+  const isW=mode==='walking';
+  const badge=`<span class="walk-badge ${isW?'badge-w':'badge-nw'}">${isW?'With Walking':'Non-Ambulatory'}</span>`;
+  document.getElementById('hdr-model-badge').outerHTML=`<span id="hdr-model-badge" class="walk-badge ${isW?'badge-w':'badge-nw'}">${isW?'With Walking':'Non-Ambulatory'}</span>`;
+  document.getElementById('sh-model-label').innerHTML=badge;
+  buildGGItems();
+  recalc();
+}
+
+function setGG(key,val) {
+  state.gg[key]=state.gg[key]===val?null:val;
+  const items = state.walkMode==='walking'?GG_WALKING:GG_NOWALKING;
+  items.forEach(([k])=>{
+    [1,2,3,4,5,6,88,9].forEach(v=>{
+      const btn=document.getElementById(`gg-${k}-${v}`);
+      if(btn) btn.classList.toggle('sel-btn',state.gg[k]===v);
+    });
+  });
+  recalc();
+}
+
+function toggleCov(key) {
+  state.checks[key]=!state.checks[key];
+  const wrap=document.getElementById('cov-wrap-'+key);
+  if(wrap){wrap.classList.toggle('chk',!!state.checks[key]);wrap.querySelector('input').checked=!!state.checks[key];}
+  recalc();
+}
+
+function computeAdmScore() {
+  const items = state.walkMode==='walking' ? GG_WALKING : GG_NOWALKING;
+  // Separate wheeling item from others for non-ambulatory
+  const isNW = state.walkMode==='nowalking';
+  const scoringItems = isNW ? items.filter(([k])=>k!=='gg_0170R') : items;
+  const wheelKey = 'gg_0170R';
+
+  const vals = scoringItems.map(([key])=>state.gg[key]);
+  const scored = vals.filter(v=>v!==null&&v!==undefined&&v>=1&&v<=6);
+  const imputed88 = vals.filter(v=>v===88);
+
+  if(scored.length===0 && imputed88.length===0) {
+    // Also check if wheeling item set for non-ambulatory
+    if(isNW && state.gg[wheelKey]!==undefined && state.gg[wheelKey]!==null && state.gg[wheelKey]>=1 && state.gg[wheelKey]<=6) {
+      // only wheel item set, use it
+    } else {
+      clearGGDisplay(items); return null;
+    }
+  }
+
+  const avg = scored.length>0 ? scored.reduce((a,b)=>a+b,0)/scored.length : 0;
+  const imputedSum = avg * imputed88.length;
+  let total = scored.reduce((a,b)=>a+b,0) + imputedSum;
+
+  // Add wheeling item ×2 for non-ambulatory
+  let wheelVal = null;
+  let wheelContrib = 0;
+  if(isNW) {
+    const wv = state.gg[wheelKey];
+    if(wv!==null&&wv!==undefined&&wv>=1&&wv<=6){ wheelVal=wv; wheelContrib=wv*2; total+=wheelContrib; }
+    else if(wv===88){ wheelVal=88; wheelContrib=avg*2; total+=wheelContrib; }
+  }
+
+  // Update displays
+  items.forEach(([key,,, grp])=>{
+    const imp=document.getElementById(`gg-imp-${key}`);
+    const disp=document.getElementById(`gg-disp-${key}`);
+    if(!imp||!disp) return;
+    const v=state.gg[key];
+    const isWheel=key===wheelKey;
+    if(v===88){
+      imp.style.display='inline';
+      imp.textContent=isWheel?`→ ${avg.toFixed(1)} ×2 = ${(avg*2).toFixed(1)}`:`→ ${avg.toFixed(1)}`;
+      disp.style.color='#f59e0b'; disp.textContent='88';
+    } else if(v>=1&&v<=6){
+      imp.style.display='none';
+      disp.style.color=isWheel?'#fbbf24':'#90cbee';
+      disp.textContent=isWheel?`${v}×2=${v*2}`:v;
+    } else if(v===9||v===10){
+      imp.style.display='none'; disp.style.color='#4a6a80'; disp.textContent='N/A';
+    } else {
+      imp.style.display='none'; disp.style.color='#3b6a8e'; disp.textContent='—';
+    }
+  });
+
+  // Update summary box
+  document.getElementById('sum-scored-count').textContent=`${scored.length} of ${scoringItems.length}`;
+  document.getElementById('sum-avg').textContent=scored.length>0?avg.toFixed(2):'—';
+  document.getElementById('sum-imputed').textContent=imputed88.length>0?`${imputed88.length} × ${avg.toFixed(2)} = ${imputedSum.toFixed(1)}`:'None';
+  if(isNW){
+    const wd=document.getElementById('sum-wheel');
+    if(wd) wd.textContent=wheelVal!==null?(wheelVal===88?`${avg.toFixed(1)} × 2 = ${(avg*2).toFixed(1)}`:`${wheelVal} × 2 = ${wheelContrib}`):' —';
+  }
+  document.getElementById('sum-total').textContent=Math.round(total);
+  return total;
+}
+
+function clearGGDisplay(items){
+  items.forEach(([key])=>{
+    const imp=document.getElementById(`gg-imp-${key}`);
+    const disp=document.getElementById(`gg-disp-${key}`);
+    if(imp) imp.style.display='none';
+    if(disp){disp.style.color='#3b6a8e';disp.textContent='—';}
+  });
+  document.getElementById('sum-scored-count').textContent='0';
+  document.getElementById('sum-avg').textContent='—';
+  document.getElementById('sum-imputed').textContent='—';
+  document.getElementById('sum-total').textContent='—';
+}
+
+function recalc() {
+  const adm=computeAdmScore();
+  const bmi=parseFloat(document.getElementById('bmi-val')?.value);
+  const admBox=document.getElementById('adm-breakdown');
+
+  if(adm!==null){
+    admBox.style.display='block';
+    const pmcD=PMC[state.pmc];
+    const modeLabel=state.walkMode==='walking'?'With Walking':'Non-Ambulatory';
+    admBox.innerHTML=`
+      <div class="info-row"><span>Model: ${modeLabel}</span><span style="color:#90cbee">Adm Score: ${adm.toFixed(1)}</span></div>
+      <div class="info-row"><span>Linear (${adm.toFixed(1)} × 1.0425)</span><strong>${(adm*1.0425).toFixed(3)}</strong></div>
+      <div class="info-row"><span>Squared (${adm.toFixed(1)}² × −0.0091)</span><strong>${((adm**2)*-0.0091).toFixed(3)}</strong></div>
+      ${pmcD.int!==0?`<div class="info-row"><span>Dx Interaction (${adm.toFixed(1)} × ${pmcD.int})</span><strong>${(adm*pmcD.int).toFixed(3)}</strong></div>`:''}`;
+  } else {
+    admBox.style.display='none';
+  }
+
+  if(adm===null){setScore(null,null,[]);return;}
+
+  const breakdown=[];
+  let total=INTERCEPT;
+  breakdown.push({label:'Model Intercept',val:INTERCEPT});
+  const ac=AGE_C[state.age]||0;
+  total+=ac;
+  breakdown.push({label:`Age: ${state.age.replace('lte','≤').replace('gt','>')}`,val:ac});
+  const lin=adm*1.0425,sq=(adm**2)*-0.0091;
+  total+=lin+sq;
+  breakdown.push({label:'Adm score (linear)',val:+lin.toFixed(3)});
+  breakdown.push({label:'Adm score (squared)',val:+sq.toFixed(3)});
+  const pmcD=PMC[state.pmc];
+  total+=pmcD.base;
+  breakdown.push({label:`Dx: ${pmcD.label}`,val:pmcD.base});
+  if(pmcD.int!==0){const ia=adm*pmcD.int;total+=ia;breakdown.push({label:'Adm × Dx interaction',val:+ia.toFixed(3)});}
+  if(!isNaN(bmi)){
+    if(bmi>50){total+=-1.5846;breakdown.push({label:'High BMI (>50)',val:-1.5846});}
+    else if(bmi>=12&&bmi<=19){total+=-0.3545;breakdown.push({label:'Low BMI (12–19)',val:-0.3545});}
+  }
+  COVARIATES.forEach(([key,label,coeff,,suppress])=>{
+    if(!state.checks[key])return;
+    if(suppress&&suppress.includes(state.pmc))return;
+    total+=coeff;breakdown.push({label,val:coeff});
+  });
+  setScore(total,adm,breakdown);
+}
+
+function setScore(raw,adm,breakdown){
+  if(raw===null){
+    document.getElementById('score-display').textContent='—';
+    document.getElementById('score-display').style.color='#3b6a8e';
+    document.getElementById('hdr-score').textContent='—';
+    document.getElementById('hdr-score').style.color='#3b6a8e';
+    document.getElementById('score-bar').style.width='0%';
+    document.getElementById('breakdown-list').innerHTML='<div style="font-size:11px;color:#2a4060;padding:6px 0;">Enter GG items to calculate</div>';
+    document.getElementById('bkd-total').style.display='none';
+    document.getElementById('cap-warn').style.display='none';
+    return;
+  }
+  const capped=Math.max(0,Math.min(raw,60));
+  const pct=(capped/60)*100;
+  const color=capped>=40?'#4ade80':capped>=25?'#fbbf24':'#f87171';
+  document.getElementById('score-display').textContent=Math.round(capped);
+  document.getElementById('score-display').style.color=color;
+  document.getElementById('hdr-score').textContent=Math.round(capped);
+  document.getElementById('hdr-score').style.color=color;
+  document.getElementById('score-bar').style.width=pct+'%';
+  document.getElementById('score-bar').style.background=`linear-gradient(90deg,${color}55,${color})`;
+  document.getElementById('raw-total').textContent=raw.toFixed(2);
+  document.getElementById('bkd-total').style.display='flex';
+  document.getElementById('cap-warn').style.display=raw>60?'block':'none';
+  document.getElementById('breakdown-list').innerHTML=breakdown.map(item=>`
+    <div class="bkd-item">
+      <span class="bkd-lbl">${item.label}</span>
+      <span class="bkd-val ${item.val===INTERCEPT?'blue':item.val>=0?'green':'red'}">
+        ${item.val===INTERCEPT?'':item.val>=0?'+':''}${item.val.toFixed?item.val.toFixed(3):item.val}
+      </span>
+    </div>`).join('');
+}
+
+function resetAll(){
+  state={age:'65-74',pmc:'09',walkMode:'walking',gg:{},checks:{},dcGg:{}};
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('sel',c.dataset.age==='65-74'));
+  document.querySelectorAll('.cov input').forEach(inp=>inp.checked=false);
+  document.querySelectorAll('.cov').forEach(c=>c.classList.remove('chk'));
+  if(document.getElementById('bmi-val'))document.getElementById('bmi-val').value='';
+  document.getElementById('btn-walking').className='walk-opt walk-active-w';
+  document.getElementById('btn-nowalking').className='walk-opt';
+  document.getElementById('dc-banner').style.display='none';
+  document.getElementById('dc-compare-grid').style.display='none';
+  const admInp=document.getElementById('dc-adm-manual');
+  const expInp=document.getElementById('dc-exp-manual');
+  if(admInp){admInp.value='';delete admInp.dataset.manuallySet;}
+  if(expInp){expInp.value='';delete expInp.dataset.manuallySet;}
+  const admSrc=document.getElementById('dc-adm-source');
+  const expSrc=document.getElementById('dc-exp-source');
+  if(admSrc)admSrc.textContent='';if(expSrc)expSrc.textContent='';
+  buildPMC(); buildGGItems(); buildDCItems(); recalc();
+}
+
+// ═══════════════════════════════════════════════════
+// DISCHARGE GG STATE
+// ═══════════════════════════════════════════════════
+// stored separately so admission GG isn't overwritten
+// state.dcGg = { key: value }
+
+function buildDCItems() {
+  const items = state.walkMode==='walking' ? GG_WALKING : GG_NOWALKING;
+  const sc = document.getElementById('dc-selfcare-body');
+  const mob = document.getElementById('dc-mobility-body');
+  if(!sc||!mob) return;
+  sc.innerHTML=''; mob.innerHTML='';
+  if(!state.dcGg) state.dcGg={};
+
+  // Auto-fill admission score from GG entry tab if not manually set
+  const admInp = document.getElementById('dc-adm-manual');
+  const admSrc = document.getElementById('dc-adm-source');
+  const sumTotal = document.getElementById('sum-total');
+  if(admInp && !admInp.dataset.manuallySet && sumTotal && sumTotal.textContent!=='—') {
+    admInp.value = sumTotal.textContent;
+    if(admSrc) admSrc.textContent = '↑ auto-filled from GG Entry tab';
+  }
+
+  // Auto-fill expected discharge score from score panel if not manually set
+  const expInp = document.getElementById('dc-exp-manual');
+  const expSrc = document.getElementById('dc-exp-source');
+  const scoreDisp = document.getElementById('score-display');
+  if(expInp && !expInp.dataset.manuallySet && scoreDisp && scoreDisp.textContent!=='—') {
+    expInp.value = scoreDisp.textContent;
+    if(expSrc) expSrc.textContent = '↑ auto-filled from regression model';
+  }
+
+  items.forEach(([key,code,desc,grp])=>{
+    const isWheel = grp==='mob-wheel';
+    const tbody = grp==='sc' ? sc : mob;
+    const admVal = state.gg[key];
+    const admDisp = (admVal!==null&&admVal!==undefined) ? admVal : '—';
+    const rowClass = isWheel ? 'gg-row-wheel' : '';
+    tbody.innerHTML += `
+      <tr class="${rowClass}">
+        <td>
+          <div class="gg-item-code">${code}</div>
+          <div class="gg-item-name" style="${isWheel?'color:#fbbf24;':''}">${desc.replace(' ⭐','')}</div>
+        </td>
+        <td>
+          <div class="gg-rating-row">
+            ${[1,2,3,4,5,6].map(v=>`<button class="gg-btn ${state.dcGg[key]===v?'sel-btn':''}" onclick="setDC('${key}',${v})" id="dc-${key}-${v}">${v}</button>`).join('')}
+            <button class="gg-btn btn-na ${state.dcGg[key]===9?'sel-btn':''}" onclick="setDC('${key}',9)" id="dc-${key}-9">N/A</button>
+            <span class="gg-value-display" id="dc-disp-${key}" style="${isWheel?'color:#fbbf24;':''}">${state.dcGg[key]!==undefined&&state.dcGg[key]!==null?state.dcGg[key]:'—'}</span>
+          </div>
+        </td>
+        <td style="text-align:right;font-family:monospace;font-size:12px;">
+          <span id="dc-change-${key}" style="color:var(--mut);">${admDisp!=='—'?admDisp:'—'} → <span id="dc-arrow-${key}" style="color:#5a7a96;">?</span></span>
+        </td>
+      </tr>`;
+  });
+}
+
+function setDC(key, val) {
+  if(!state.dcGg) state.dcGg={};
+  state.dcGg[key] = state.dcGg[key]===val ? null : val;
+  // Refresh all DC buttons for this key
+  [1,2,3,4,5,6,9].forEach(v=>{
+    const btn=document.getElementById(`dc-${key}-${v}`);
+    if(btn) btn.classList.toggle('sel-btn', state.dcGg[key]===v);
+  });
+  const disp=document.getElementById(`dc-disp-${key}`);
+  if(disp) { disp.textContent=state.dcGg[key]!==null&&state.dcGg[key]!==undefined?state.dcGg[key]:'—'; }
+  // Update arrow
+  const arrow=document.getElementById(`dc-arrow-${key}`);
+  const admVal=state.gg[key];
+  if(arrow && state.dcGg[key]!==null && state.dcGg[key]!==undefined && state.dcGg[key]>=1 && state.dcGg[key]<=6) {
+    arrow.textContent=state.dcGg[key];
+    if(admVal!==null&&admVal!==undefined&&admVal>=1&&admVal<=6) {
+      const diff=state.dcGg[key]-admVal;
+      arrow.style.color=diff>0?'#4ade80':diff<0?'#f87171':'#90cbee';
+    } else { arrow.style.color='#90cbee'; }
+  } else if(arrow) { arrow.textContent='?'; arrow.style.color='#5a7a96'; }
+  computeDischarge();
+}
+
+function computeDischarge() {
+  if(!state.dcGg) return;
+  const items = state.walkMode==='walking' ? GG_WALKING : GG_NOWALKING;
+  const isNW = state.walkMode==='nowalking';
+
+  // Use manual input if filled, else fall back to calculated values
+  const admInp = document.getElementById('dc-adm-manual');
+  const expInp = document.getElementById('dc-exp-manual');
+  const scoreDisp = document.getElementById('score-display');
+
+  // Expected: prefer manual input, else use score panel
+  let expectedRaw = NaN;
+  if(expInp && expInp.value!=='') {
+    expectedRaw = parseFloat(expInp.value);
+    expInp.dataset.manuallySet = '1';
+    const src = document.getElementById('dc-exp-source');
+    if(src) src.textContent = '✎ manually entered';
+  } else if(scoreDisp && scoreDisp.textContent!=='—') {
+    expectedRaw = parseFloat(scoreDisp.textContent);
+  }
+
+  // Compute actual discharge score — simple sum (no imputation for discharge)
+  let actualSum = 0;
+  let scoredCount = 0;
+  items.forEach(([key,,, grp])=>{
+    const v = state.dcGg[key];
+    if(v!==null&&v!==undefined&&v>=1&&v<=6) {
+      const mult = (grp==='mob-wheel') ? 2 : 1;
+      actualSum += v * mult;
+      scoredCount++;
+    }
+  });
+
+  // Update comparison grid
+  const grid = document.getElementById('dc-compare-grid');
+  const banner = document.getElementById('dc-banner');
+  if(scoredCount===0){
+    grid.style.display='none'; banner.style.display='none'; return;
+  }
+  grid.style.display='grid';
+
+  document.getElementById('dc-expected').textContent = isNaN(expectedRaw) ? '—' : Math.round(expectedRaw);
+
+  const actualBox = document.getElementById('dc-actual-box');
+  const actualDisp = document.getElementById('dc-actual-val');
+  actualDisp.textContent = Math.round(actualSum);
+
+  if(!isNaN(expectedRaw)) {
+    const diff = actualSum - expectedRaw;
+    const diffEl = document.getElementById('dc-diff-val');
+    const diffBox = document.getElementById('dc-diff-box');
+    diffEl.textContent = (diff>=0?'+':'')+Math.round(diff);
+
+    // Verdict
+    banner.style.display='block';
+    const verdict = document.getElementById('dc-verdict');
+    const verdictSub = document.getElementById('dc-verdict-sub');
+
+    if(diff >= 0) {
+      banner.style.background='rgba(74,222,128,.1)';
+      banner.style.border='1px solid rgba(74,222,128,.3)';
+      verdict.style.color='#4ade80';
+      verdict.textContent = diff===0 ? '✓ Met Expected Score' : '✓ Exceeded Expected Score';
+      verdictSub.style.color='#4ade80';
+      verdictSub.textContent = diff===0
+        ? `Actual score (${Math.round(actualSum)}) exactly matched the expected score (${Math.round(expectedRaw)})`
+        : `Actual score (${Math.round(actualSum)}) exceeded expected by ${Math.round(diff)} points — strong outcome`;
+      diffEl.style.color='#4ade80';
+      diffBox.style.background='rgba(74,222,128,.06)';
+      diffBox.style.border='1px solid rgba(74,222,128,.2)';
+      actualDisp.style.color='#4ade80';
+      actualBox.style.background='rgba(74,222,128,.06)';
+      actualBox.style.border='1px solid rgba(74,222,128,.2)';
+    } else {
+      const absDiff = Math.abs(diff);
+      const severity = absDiff <= 2 ? 'close miss' : absDiff <= 5 ? 'moderate gap' : 'significant gap';
+      banner.style.background='rgba(248,113,113,.1)';
+      banner.style.border='1px solid rgba(248,113,113,.3)';
+      verdict.style.color='#f87171';
+      verdict.textContent = '✗ Did Not Meet Expected Score';
+      verdictSub.style.color='#f87171';
+      verdictSub.textContent = `Actual score (${Math.round(actualSum)}) fell ${Math.round(absDiff)} points below expected (${Math.round(expectedRaw)}) — ${severity}`;
+      diffEl.style.color='#f87171';
+      diffBox.style.background='rgba(248,113,113,.06)';
+      diffBox.style.border='1px solid rgba(248,113,113,.2)';
+      actualDisp.style.color='#f87171';
+      actualBox.style.background='rgba(248,113,113,.06)';
+      actualBox.style.border='1px solid rgba(248,113,113,.2)';
+    }
+  }
+}
+
+init();
+</script>
+</body>
+</html>
