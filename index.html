@@ -117,8 +117,89 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#080f17;color:#d4
 
 .reset-btn{display:block;width:100%;padding:7px;margin-top:14px;border:1px solid rgba(255,255,255,.07);border-radius:5px;background:transparent;color:var(--mut);font-family:inherit;font-size:11.5px;cursor:pointer;transition:all .15s;}
 .reset-btn:hover{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3);color:var(--neg);}
-.green{color:var(--pos);} .red{color:var(--neg);} .blue{color:#90cbee;} .amber{color:var(--warn);}
-</style>
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  /* Header */
+  .hdr{padding:0 12px;height:52px;}
+  .hdr-title{font-size:13px;}
+  .hdr-sub{display:none;}
+  .hdr-mark{width:28px;height:28px;font-size:11px;margin-right:7px;}
+  #hdr-score{font-size:18px;}
+  #hdr-model-badge{display:none;}
+
+  /* Layout: stack vertically, no fixed height */
+  .layout{flex-direction:column;height:auto;overflow:visible;}
+
+  /* Sidebar becomes horizontal scrolling tab bar at top */
+  .sidebar{
+    width:100%;height:auto;border-right:none;
+    border-bottom:1px solid var(--bdr2);
+    flex-direction:row;overflow-x:auto;overflow-y:hidden;
+    padding:0;flex-shrink:0;
+    scrollbar-width:none;
+  }
+  .sidebar::-webkit-scrollbar{display:none;}
+  .nav-sec{display:none;}
+  .nav-btn{
+    flex-direction:column;gap:3px;padding:10px 14px;
+    font-size:10px;border-left:none;border-bottom:3px solid transparent;
+    white-space:nowrap;flex-shrink:0;align-items:center;
+  }
+  .nav-btn.active{border-left:none;border-bottom-color:var(--acc);}
+
+  /* Main: full width, normal scroll */
+  .main{padding:16px;overflow-y:visible;flex:none;width:100%;}
+
+  /* Score panel: move to bottom, horizontal layout */
+  .score-panel{
+    width:100%;border-left:none;border-top:1px solid var(--bdr2);
+    flex-direction:column;padding:14px;
+    order:10;
+  }
+  .score-hero{padding:12px;}
+  .sh-value{font-size:32px;}
+
+  /* PMC grid: single column on mobile */
+  .pmc-grid{grid-template-columns:1fr;}
+
+  /* Walking toggle: stack on small screens */
+  .walk-toggle{flex-direction:column;width:100%;}
+  .walk-opt{text-align:center;padding:10px;}
+
+  /* GG table: make scrollable, bigger touch targets */
+  .gg-table{display:block;overflow-x:auto;}
+  .gg-table th,.gg-table td{white-space:nowrap;}
+  .gg-btn{width:38px;height:36px;font-size:13px;}
+
+  /* Discharge compare grid: stack to 1 col */
+  #dc-compare-grid{grid-template-columns:1fr!important;}
+
+  .dc-input-grid{grid-template-columns:1fr!important;}
+
+  /* Manual input boxes: stack */
+  .sec #sec-discharge > div:first-of-type,
+  [style*="grid-template-columns:1fr 1fr"]{
+    grid-template-columns:1fr!important;
+  }
+
+  /* Chips: smaller */
+  .chip{padding:5px 10px;font-size:11px;}
+
+  /* Section title */
+  .sec-title{font-size:15px;}
+
+  /* Score breakdown panel goes full width below content */
+  .bkd-title{margin-top:4px;}
+}
+
+@media (max-width: 480px) {
+  .hdr-title{font-size:11.5px;}
+  .main{padding:12px;}
+  .gg-btn{width:36px;height:34px;font-size:12px;}
+  .nav-btn{padding:8px 11px;font-size:9.5px;}
+}
+
 </head>
 <body>
 
@@ -290,7 +371,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#080f17;color:#d4
       <div class="sec-desc">Enter the actual GG scores from the <strong>discharge MDS</strong> to see if the patient met their expected score. You can use scores calculated from the other tabs, or enter them manually below.</div>
 
       <!-- STANDALONE MANUAL INPUTS -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+      <div class="dc-input-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
         <div style="background:rgba(59,158,222,.06);border:1px solid rgba(59,158,222,.2);border-radius:8px;padding:12px 14px;">
           <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-bottom:6px;">Admission Function Score</div>
           <div style="font-size:10.5px;color:#4a7090;margin-bottom:8px;">Auto-filled from GG Entry tab, or enter manually</div>
